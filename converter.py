@@ -52,45 +52,46 @@ def _bead_index_within_prefix(rows: list[ParsedRow]) -> dict[str, int]:
     return indices
 
 
-def validate_config(rows: list[ParsedRow], config: ConversionConfig) -> list[str]:
-    """Return a list of validation error messages."""
-    errors: list[str] = []
+def collect_mapping_warnings(rows: list[ParsedRow], config: ConversionConfig) -> list[str]:
+    """Return warnings for missing or incomplete mappings."""
+    warnings: list[str] = []
     prefixes = {row.prefix for row in rows}
 
     for prefix in prefixes:
-        if prefix not in config.prefix_sample_map or not config.prefix_sample_map[prefix].strip():
-            errors.append(f"Missing Sample/CellLine mapping for prefix: {prefix}")
+        if not config.prefix_sample_map.get(prefix, "").strip():
+            warnings.append(f"Missing Sample/CellLine mapping for prefix: {prefix}")
 
     bead_prefixes = {
-        p for p, sample in config.prefix_sample_map.items() if is_bead_sample(sample)
+        p
+        for p in prefixes
+        if is_bead_sample(config.prefix_sample_map.get(p, ""))
     }
     clone_prefixes = prefixes - bead_prefixes
 
     if clone_prefixes:
         suffixes = {row.suffix for row in rows if row.prefix in clone_prefixes}
         for suffix in suffixes:
-            if suffix not in config.suffix_antibody_map or not config.suffix_antibody_map[suffix]:
-                errors.append(f"Missing Antibody mapping for suffix: {suffix}")
+            if not config.suffix_antibody_map.get(suffix, "").strip():
+                warnings.append(f"Missing Antibody mapping for suffix: {suffix}")
 
     for prefix in bead_prefixes:
-        if prefix not in config.bead_prefix_antibody_map or not config.bead_prefix_antibody_map[prefix]:
-            errors.append(f"Missing Antibody mapping for bead prefix: {prefix}")
+        if not config.bead_prefix_antibody_map.get(prefix, "").strip():
+            warnings.append(f"Missing Antibody mapping for bead prefix: {prefix}")
 
     if bead_prefixes and not config.bead_base.strip():
-        errors.append("Bead base ID is required when bead prefixes are present.")
+        warnings.append("Bead base ID not set (bead prefixes present).")
 
-    return errors
+    return warnings
 
 
 def convert(rows: list[ParsedRow], config: ConversionConfig) -> tuple[pd.DataFrame, list[str]]:
     """Convert parsed rows to Pl1_metadata format. Returns (dataframe, warnings)."""
-    warnings: list[str] = []
-    errors = validate_config(rows, config)
-    if errors:
-        raise ValueError("\n".join(errors))
+    warnings = collect_mapping_warnings(rows, config)
 
     bead_prefixes = {
-        p for p, sample in config.prefix_sample_map.items() if is_bead_sample(sample)
+        p
+        for p in {row.prefix for row in rows}
+        if is_bead_sample(config.prefix_sample_map.get(p, ""))
     }
 
     clone_rows = [r for r in rows if r.prefix not in bead_prefixes]
@@ -101,17 +102,18 @@ def convert(rows: list[ParsedRow], config: ConversionConfig) -> tuple[pd.DataFra
     ordered_rows = clone_rows + bead_rows
 
     bead_indices = _bead_index_within_prefix(bead_rows)
+    bead_base = config.bead_base.strip()
     output_rows: list[dict[str, str]] = []
 
     for row in ordered_rows:
         if row.prefix in bead_prefixes:
             index = bead_indices[row.fcs_file]
-            sample = f"{config.bead_base.strip()}/{index}"
-            antibody = config.bead_prefix_antibody_map[row.prefix]
+            sample = f"{bead_base}/{index}" if bead_base else ""
+            antibody = config.bead_prefix_antibody_map.get(row.prefix, "").strip()
             notes = ""
         else:
-            sample = config.prefix_sample_map[row.prefix].strip()
-            antibody = config.suffix_antibody_map[row.suffix]
+            sample = config.prefix_sample_map.get(row.prefix, "").strip()
+            antibody = config.suffix_antibody_map.get(row.suffix, "").strip()
             notes = config.suffix_notes_map.get(row.suffix, "").strip()
 
         output_rows.append(
@@ -119,7 +121,7 @@ def convert(rows: list[ParsedRow], config: ConversionConfig) -> tuple[pd.DataFra
                 "FCSFile": row.fcs_file,
                 "Sample/CellLine": sample,
                 "Antibody": antibody,
-                "Channel": get_channel(antibody),
+                "Channel": get_channel(antibody) if antibody else "",
                 "Notes": notes,
                 "WellID": "",
             }

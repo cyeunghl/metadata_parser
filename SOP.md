@@ -37,8 +37,7 @@ The app opens in your browser.
 
 ## Step 2: Load Your Source File
 
-1. Click **Upload source metadata CSV** and select your file, **or**
-2. Leave **Use bundled example file** checked to load the example.
+1. Click **Upload source metadata CSV** and select your file.
 
 **Check the Parse Preview table.** You should see each FCS file split into:
 
@@ -50,20 +49,33 @@ If no rows appear, confirm filenames match the expected pattern.
 
 ---
 
-## Step 3: Map Prefixes → Sample/CellLine
+## Step 3: Import Cell Lines
 
-For every unique **prefix**, enter a Sample/CellLine value.
+The bundled tracker (`20260625_Tracker - Sheet1.csv`) loads automatically when present. Upload a different CSV to replace it.
+
+Columns required: `TrackerCellLine`, `TrackerID`.
+
+- Prefixes that match `TrackerCellLine` (e.g. `CALU6`) are auto-filled with the corresponding `TrackerID`.
+
+---
+
+## Step 4: Map Prefixes → Sample/CellLine
+
+Choose an **assignment mode**:
+
+- **Tracker select** — per prefix, pick a `TrackerID` from the tracker, `bead`/`beads`, or **Other (freeform)** for a custom value on that line only.
+- **Freeform text for all** — text input on every prefix line.
 
 ### Cell line / clone samples
 
-Enter the full sample name:
+Use a tracker `TrackerID` or enter a custom name:
 
-- `Clone1` → `KPL4_e38_e1_e1_b1_P2`
-- `Clone2` → `KPL4_e38_e1_e2_b1_P2`
+- `CALU6` → `CALU6_b2_P0` (from tracker)
+- `Clone1` → `KPL4_e38_e1_e1_b1_P2` (freeform)
 
 ### Bead samples
 
-Type **`bead`** or **`beads`** (any case). A **bead** badge appears next to that prefix.
+Type or select **`bead`** or **`beads`** (any case). A **bead** badge appears next to that prefix.
 
 Examples:
 
@@ -71,11 +83,11 @@ Examples:
 - `B1` → `bead`
 - `TROP2 Beads` → `beads`
 
-**Note:** `bead`/`beads` is a classification label only. The final output uses `{base}/0`, `{base}/1`, etc. (see Step 5).
+**Note:** `bead`/`beads` is a classification label only. The final output uses `{base}/0`, `{base}/1`, etc. (see Step 6).
 
 ---
 
-## Step 4: Map Suffixes → Antibody (Clone Rows Only)
+## Step 5: Map Suffixes → Antibody (Clone Rows Only)
 
 For clone prefixes, assign an antibody to each **suffix** (e.g. `0001`, `0002`, …).
 
@@ -93,7 +105,7 @@ Channel fills in automatically. Optionally add **Notes** per suffix (e.g. `unsta
 
 ---
 
-## Step 5: Configure Bead Settings (If Applicable)
+## Step 6: Configure Bead Settings (If Applicable)
 
 If any prefix is marked as bead, a **Bead Settings** section appears.
 
@@ -114,12 +126,12 @@ If any prefix is marked as bead, a **Bead Settings** section appears.
 
 ---
 
-## Step 6: Preview and Export
+## Step 7: Preview and Export
 
 1. Scroll to **Preview & Export**.
 2. Review the output table.
-3. Fix any red error messages (missing mappings).
-4. Click **Download Pl1_metadata.csv**.
+3. Check for yellow warnings listing any incomplete mappings.
+4. Click **Download Pl1_metadata.csv** (available even with warnings; unassigned fields are left blank).
 
 **Output behavior**
 
@@ -146,10 +158,7 @@ If any prefix is marked as bead, a **Bead Settings** section appears.
 | Issue | Action |
 |-------|--------|
 | "No valid .fcs filenames found" | Check that filenames end in `.fcs` and include a date like `2026-06-02` |
-| "Missing Sample/CellLine mapping for prefix" | Fill in every prefix in Step 3 |
-| "Missing Antibody mapping for suffix" | Complete all suffix dropdowns for clone rows |
-| "Missing Antibody mapping for bead prefix" | Assign antibody for each bead prefix |
-| "Bead base ID is required" | Enter a bead base when bead prefixes exist |
+| Yellow warnings about missing mappings | Fill in the listed prefix, suffix, or bead fields; output still generates with blanks for unassigned values |
 | Wrong antibody on bead rows | Beads use per-prefix antibody, not suffix mapping |
 
 ---
